@@ -64,6 +64,19 @@ namespace TunaPiano.Requests
                 db.SaveChanges();
                 return Results.NoContent();
             });
+
+            app.MapGet("/api/genres/popular", (TunaPianoDbContext db) =>
+            {
+                var popular = db.Genres
+                    .Select(genre => new
+                    {
+                        id = genre.Id,
+                        description = genre.Description,
+                        song_count = genre.Songs.Count()
+                    }).OrderByDescending(genre => genre.song_count).ToList();
+                
+                return Results.Ok(new { genres = popular });
+            });
         }
     }
 }

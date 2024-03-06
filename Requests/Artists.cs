@@ -1,4 +1,5 @@
-﻿using System.Data.Common;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Data.Common;
 using TunaPiano.Models;
 
 namespace TunaPiano.Requests
@@ -14,7 +15,23 @@ namespace TunaPiano.Requests
 
             app.MapGet("/api/artists/{id}", (TunaPianoDbContext db, int id) =>
             {
-                return db.Artists.SingleOrDefault(a => a.Id == id);
+                var artist = db.Artists.Include(a => a.Songs).SingleOrDefault(a => a.Id == id);
+
+                var body = new
+                {
+                    id = artist.Id,
+                    name = artist.Name,
+                    age = artist.Age,
+                    bio = artist.Bio,
+                    songs = artist.Songs.Select(song => new
+                    {
+                        title = song.Title,
+                        album = song.Album,
+                        length = song.Length,
+                    })
+                };
+
+                return Results.Ok(body);
             });
 
             app.MapPost("/api/artists", (TunaPianoDbContext db, Artist newArtist) =>
@@ -60,6 +77,12 @@ namespace TunaPiano.Requests
 
                 db.SaveChanges();
                 return Results.NoContent();
+            });
+
+            app.MapGet("/api/artists/{id}/songs", (TunaPianoDbContext db, int id) =>
+            {
+                var artistSongs = db.Songs.Where(a => a.ArtistId == id);
+                return artistSongs.ToList();
             });
         }
     }
