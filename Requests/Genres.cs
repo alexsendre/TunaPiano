@@ -26,7 +26,7 @@ namespace TunaPiano.Requests
                 {
                     db.Genres.Add(newGenre);
                     db.SaveChanges();
-                    return Results.Created($"/api/songs/{newGenre.Id}", newGenre);
+                    return Results.Created($"/api/genres/{newGenre.Id}", newGenre);
                 }
                 catch (DbException)
                 {
