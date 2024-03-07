@@ -1,4 +1,5 @@
-﻿using System.Data.Common;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Data.Common;
 using TunaPiano.Models;
 
 namespace TunaPiano.Requests
@@ -16,7 +17,26 @@ namespace TunaPiano.Requests
             // get specific genre
             app.MapGet("/api/genres/{id}", (TunaPianoDbContext db, int id) =>
             {
-                return db.Genres.Where(g => g.Id == id).ToList();
+                var genre = db.Genres.Include(g => g.Songs).SingleOrDefault(g => g.Id == id);
+
+                if (genre == null)
+                {
+                    return Results.NotFound("This genre does not exist, try another");
+                }
+
+                var body = new
+                {
+                    id = genre.Id,
+                    description = genre.Description,
+                    songs = genre.Songs.Select(song => new
+                    {
+                        title = song.Title,
+                        album = song.Album,
+                        length = song.Length,
+                    })
+                };
+
+                return Results.Ok(body);
             });
 
             // create a genre

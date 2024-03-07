@@ -1,4 +1,5 @@
-﻿using System.Data.Common;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Data.Common;
 using TunaPiano.Models;
 
 namespace TunaPiano.Requests
@@ -16,7 +17,28 @@ namespace TunaPiano.Requests
             // get specific song
             app.MapGet("/api/songs/{id}", (TunaPianoDbContext db, int id) =>
             {
-                return db.Songs.Where(s => s.Id == id).ToList();
+                var song = db.Songs.Include(s => s.Genres).Include(s => s.Artist).SingleOrDefault(s => s.Id == id);
+
+                var body = new
+                {
+                    id = song.Id,
+                    title = song.Title,
+                    artist = new
+                    {
+                        id = song.Artist.Id,
+                        name = song.Artist.Name,
+                        age = song.Artist.Age,
+                        bio = song.Artist.Bio,
+                    },
+                    album = song.Album,
+                    length = song.Length,
+                    genre = song.Genres.Select(genre => new
+                    {
+                        description = genre.Description,
+                    }),
+                };
+
+                return Results.Ok(body);
             });
 
             // create a song
@@ -65,6 +87,27 @@ namespace TunaPiano.Requests
 
                 db.SaveChanges();
                 return Results.NoContent();
+            });
+
+            // update song with genres
+            app.MapPut("/api/songs/{songId}/genres/{genreId}", (TunaPianoDbContext db, int songId, int genreId) =>
+            {
+                var song = db.Songs.FirstOrDefault(s => s.Id == songId);
+                var genre = db.Genres.Find(genreId);
+
+                if (song == null || genre == null)
+                {
+                    return Results.NotFound("Could not find requested data");
+                }
+
+                if (song.Genres == null)
+                {
+                    song.Genres = new List<Genre>();
+                }
+
+                song.Genres.Add(genre);
+                db.SaveChanges();
+                return Results.Ok();
             });
         }
     }
