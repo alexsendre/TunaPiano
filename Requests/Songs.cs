@@ -8,13 +8,13 @@ namespace TunaPiano.Requests
     {
         public static void Map(WebApplication app)
         {
-            // get all songs
+            // returns a list of songs
             app.MapGet("/api/songs", (TunaPianoDbContext db) =>
             {
                 return db.Songs.ToList();
             });
 
-            // get specific song
+            // returns a specific song with associated data
             app.MapGet("/api/songs/{id}", (TunaPianoDbContext db, int id) =>
             {
                 var song = db.Songs.Include(s => s.Genres).Include(s => s.Artist).SingleOrDefault(s => s.Id == id);
@@ -56,7 +56,7 @@ namespace TunaPiano.Requests
                 }
             });
 
-            // delete a song
+            // delete a specific song
             app.MapDelete("/api/songs/{id}", (TunaPianoDbContext db, int id) =>
             {
                 var song = db.Songs.FirstOrDefault(s => s.Id == id);
@@ -71,7 +71,7 @@ namespace TunaPiano.Requests
                 return Results.NoContent();
             });
 
-            // update song
+            // update a specific song
             app.MapPut("/api/songs/{id}/edit", (TunaPianoDbContext db, int id, Song updateInfo) =>
             {
                 Song songToUpdate = db.Songs.SingleOrDefault(s => s.Id == id);
@@ -108,6 +108,15 @@ namespace TunaPiano.Requests
                 song.Genres.Add(genre);
                 db.SaveChanges();
                 return Results.Ok();
+            });
+
+            // returns a songs that is associated by search query 
+            app.MapGet("/api/songs/search/genre", (TunaPianoDbContext db, string query) =>
+            {
+                var genre = db.Genres.FirstOrDefault(g => g.Description.ToLower() == query.ToLower());
+                var relatedSongs = db.Songs.Where(result => result.Genres.Contains(genre));
+
+                return relatedSongs;
             });
         }
     }

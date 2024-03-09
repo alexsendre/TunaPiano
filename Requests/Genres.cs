@@ -8,13 +8,13 @@ namespace TunaPiano.Requests
     {
         public static void Map(WebApplication app)
         {
-            // get all genres
+            // returns a list of genres
             app.MapGet("/api/genres", (TunaPianoDbContext db) =>
             {
                 return db.Genres.ToList();
             });
 
-            // get specific genre
+            // returns a specific genre and songs associated
             app.MapGet("/api/genres/{id}", (TunaPianoDbContext db, int id) =>
             {
                 var genre = db.Genres.Include(g => g.Songs).SingleOrDefault(g => g.Id == id);
@@ -85,6 +85,7 @@ namespace TunaPiano.Requests
                 return Results.NoContent();
             });
 
+            // returns an ordered list based on songs within a genre (most popular at top)
             app.MapGet("/api/genres/popular", (TunaPianoDbContext db) =>
             {
                 var popular = db.Genres

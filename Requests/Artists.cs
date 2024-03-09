@@ -8,11 +8,13 @@ namespace TunaPiano.Requests
     {
         public static void Map(WebApplication app)
         {
+            // returns list of artists
             app.MapGet("/api/artists", (TunaPianoDbContext db) =>
             {
                 return db.Artists.ToList();
             });
 
+            // returns a specific artist information & their songs
             app.MapGet("/api/artists/{id}", (TunaPianoDbContext db, int id) =>
             {
                 var artist = db.Artists.Include(a => a.Songs).SingleOrDefault(a => a.Id == id);
@@ -34,6 +36,7 @@ namespace TunaPiano.Requests
                 return Results.Ok(body);
             });
 
+            // creates an artist
             app.MapPost("/api/artists", (TunaPianoDbContext db, Artist newArtist) =>
             {
                 try
@@ -48,6 +51,7 @@ namespace TunaPiano.Requests
                 }
             });
 
+            // deletes a specific artist
             app.MapDelete("/api/artists/{id}", (TunaPianoDbContext db, int id) =>
             {
                 var artist = db.Artists.SingleOrDefault(a => a.Id == id);
@@ -62,6 +66,7 @@ namespace TunaPiano.Requests
                 return Results.NoContent();
             });
 
+            // updates a specific artist
             app.MapPut("/api/artists/{id}", (TunaPianoDbContext db, int id, Artist updateInfo) =>
             {
                 var artistToUpdate = db.Artists.SingleOrDefault(a => a.Id == id);
@@ -79,10 +84,50 @@ namespace TunaPiano.Requests
                 return Results.NoContent();
             });
 
+            // returns a list of a specific artist's songs
             app.MapGet("/api/artists/{id}/songs", (TunaPianoDbContext db, int id) =>
             {
                 var artistSongs = db.Songs.Where(a => a.ArtistId == id);
                 return artistSongs.ToList();
+            });
+
+            // returns artist based on genre 
+            app.MapGet("/api/artists/search/genre", (TunaPianoDbContext db, string query) =>
+            {
+                var genre = db.Genres.FirstOrDefault(g => g.Description.ToLower() == query.ToLower());
+                var relatedArtists = db.Artists
+                    .Join(db.Songs.Include(s => s.Artist), artist => artist.Id, song => song.ArtistId, (artist, song) => new { artist, song })
+                    .Where(result => result.song.Genres.Contains(genre))
+                    .Select(result => result.artist);
+
+                return relatedArtists;
+            });
+
+            // returns a specific artist's related artists based on genre
+            app.MapGet("/api/artists/{id}/related", (TunaPianoDbContext db, int id) =>
+            {
+                var artist = db.Artists.Include(a => a.Songs).ThenInclude(s => s.Genres).FirstOrDefault(a => a.Id == id);
+                if (artist == null)
+                {
+                    return Results.NotFound();
+                }
+
+                var artistGenres = artist.Songs.SelectMany(s => s.Genres).Select(g => g.Description).ToList();
+                var relatedArtists = db.Artists
+                                .Where(a => a.Id != id && a.Songs.Any(s => s.Genres.Any(g => artistGenres.Contains(g.Description))))
+                                .Select(a => new
+                                {
+                                    id = a.Id,
+                                    name = a.Name
+                                })
+                                .ToList();
+
+                var response = new
+                {
+                    artists = relatedArtists
+                };
+
+                return Results.Ok(response);
             });
         }
     }
